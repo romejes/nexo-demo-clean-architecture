@@ -1,0 +1,69 @@
+version: "3"
+
+services:
+  php:
+    build:
+      context: ./docker/php
+      args:
+        - INSTALL_MYSQL=${INSTALL_MYSQL}
+        - INSTALL_GD=${INSTALL_GD}
+        - INSTALL_XDEBUG=${INSTALL_XDEBUG}
+        - APP_USER=${APP_USER}
+    image: ${APP_NAME}-php
+    container_name: ${APP_NAME}-php
+    restart: unless-stopped
+    tty: true
+    working_dir: /var/www/html
+    networks:
+      - main
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+      - ./docker/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+
+  nginx:
+    build:
+      context: ./docker/nginx
+    image: ${APP_NAME}-nginx
+    container_name: ${APP_NAME}-nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - ${PORT_HTTP}:80
+      - ${PORT_HTTPS}:443
+    networks:
+      - main
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+
+  mariadb:
+    build:
+      context: ./docker/mariadb
+    image: ${APP_NAME}-mariadb
+    container_name: ${APP_NAME}-mariadb
+    restart: unless-stopped
+    tty: true
+    ports:
+      - ${MYSQL_PORT}:3306
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_USER: ${MYSQL_ROOT_USER}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    networks:
+      - main
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - "./docker/mariadb/my.cnf:/etc/mysql/my.cnf"
+
+networks:
+  main:
+    name: ${APP_NAME}-main-network
+    driver: bridge
+
+volumes:
+  mariadb_data:
+    name: ${APP_NAME}-mariadb-volume
+    driver: local
